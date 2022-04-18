@@ -81,9 +81,10 @@ class RangeTimeIntervalPlot(object):
         matplotlib.rcParams.update({"font.size": 10})
         return
     
-    def addParamPlot(self, df, title, p_max=40, p_min=0, p_step=8, xlabel="Time UT", zparam="elv0",
+    def addParamPlot(self, df, beam, title, p_max=40, p_min=0, p_step=8, xlabel="Time UT", zparam="elv0",
                     label=r"Elevation $[^o]$"):
         ax = self._add_axis()
+        df = df[df.bmnum==beam]
         X, Y, Z = get_gridded_parameters(df, xparam="mdates", yparam="slist", zparam=zparam, rounding=False)
         bounds = list(range(p_min, p_max+1, p_step))
         cmap = plt.cm.Spectral_r
