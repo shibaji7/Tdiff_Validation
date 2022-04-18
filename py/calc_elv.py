@@ -8,11 +8,11 @@ import numpy as np
 from scipy import constants as scicon
 from loguru import logger
 
-def caclulate_elevation_angle(lag0, bmnum, tfreq, hdw, tdiff=None):
+def caclulate_elevation_angle(psi_obs, bmnum, tfreq, hdw, tdiff=None):
     """
     Parameters
     ----------
-    lag0: Lag 0
+    psi_obs: Phase difference in Obs.
     hwd: Radar Hardware configuration
     tdiff: External TDiff
     """
@@ -40,7 +40,7 @@ def caclulate_elevation_angle(lag0, bmnum, tfreq, hdw, tdiff=None):
     # removing it from this algorithm.
    
     sgn = -1 if Y < 0 else 1
-    boff = hdw.beams / 2.0 - 0.5
+    boff = (hdw.beams / 2.0) - 0.5
     phi0 = hdw.beam_separation * (bmnum - boff) * np.pi / 180.0
     cp0  = np.cos(phi0)
     sp0  = np.sin(phi0)
@@ -77,7 +77,6 @@ def caclulate_elevation_angle(lag0, bmnum, tfreq, hdw, tdiff=None):
     a0[a0 < 0.] = 0.
     ca0 = np.cos(a0)
     sa0 = np.sin(a0)
-    psi_obs = lag0
     
     # maximum phase = psi_ele + psi_geo(a0)
     psi_max = psi_ele + 2.0 * np.pi * tfreq *\

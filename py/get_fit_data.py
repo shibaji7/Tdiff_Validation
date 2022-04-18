@@ -330,6 +330,7 @@ class FetchData(object):
             reader = pydarn.SDarnRead(fs, True)
             records = reader.read_fitacf()
             data += records
+        print(data[0].keys())
         if by is not None: data = self._parse_data(data, s_params, v_params, by, scan_prop)
         return data
     
