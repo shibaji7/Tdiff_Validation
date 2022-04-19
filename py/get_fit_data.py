@@ -222,8 +222,9 @@ class FetchData(object):
             if self.verbose: logger.info("Converted to scan data.")
         return _b, _s
     
-    def convert_to_pandas(self, beams, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", "time"],
-            v_params=["v", "w_l", "gflg", "p_l", "slist", "v_e", "phi0", "elv"]):
+    def convert_to_pandas(self, beams, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", 
+                                                 "time", "rsep", "frang"],
+                          v_params=["v", "w_l", "gflg", "p_l", "slist", "v_e", "phi0", "elv"]):
         """
         Convert the beam data into dataframe
         """

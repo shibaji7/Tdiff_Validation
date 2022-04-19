@@ -81,11 +81,11 @@ class RangeTimeIntervalPlot(object):
         matplotlib.rcParams.update({"font.size": 10})
         return
     
-    def addParamPlot(self, df, beam, title, p_max=40, p_min=0, p_step=8, xlabel="Time UT", zparam="elv0",
+    def addParamPlot(self, df, beam, title, p_max=40, p_min=0, p_step=8, xlabel="Time, UT", zparam="elv0",
                     label=r"Elevation $[^o]$"):
         ax = self._add_axis()
         df = df[df.bmnum==beam]
-        X, Y, Z = get_gridded_parameters(df, xparam="mdates", yparam="slist", zparam=zparam, rounding=False)
+        X, Y, Z = get_gridded_parameters(df, xparam="mdates", yparam="srange", zparam=zparam, rounding=False)
         bounds = list(range(p_min, p_max+1, p_step))
         cmap = plt.cm.Spectral_r
         norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
@@ -94,8 +94,8 @@ class RangeTimeIntervalPlot(object):
         ax.xaxis.set_major_locator(hours)
         ax.set_xlabel(xlabel, fontdict={"size":12, "fontweight": "bold"})
         ax.set_xlim([self.unique_times[0], self.unique_times[-1]])
-        ax.set_ylim([0, self.nrang])
-        ax.set_ylabel("Range gate", fontdict={"size":12, "fontweight": "bold"})
+        ax.set_ylim([0, np.max(df.srange)])
+        ax.set_ylabel("Slant Range, km", fontdict={"size":12, "fontweight": "bold"})
         im = ax.pcolormesh(X, Y, Z.T, lw=0.01, edgecolors="None", cmap=cmap, vmax=p_max, vmin=p_min)
         cb = self.fig.colorbar(im, ax=ax, shrink=0.7)
         cb.set_label(label)
@@ -134,4 +134,68 @@ class RangeTimeIntervalPlot(object):
     def close(self):
         self.fig.clf()
         plt.close()
+        return
+    
+
+class Histogram2D(object):
+    """
+    Histograms for IS and GS
+    """
+    
+    def __init__(self, is_gs_both=0, nrows=1, ncols=1, fig_title=""):
+        self._num_subplots_created = 0
+        self.fig = plt.figure(figsize=(3*ncols, 3*nrows), dpi=180) # Size for website
+        plt.suptitle(fig_title, x=0.5, y=0.9, ha="center", va="center", fontweight="bold", fontsize=15)
+        self.nrows, self.ncols = nrows, ncols
+        return
+    
+    def _add_axis(self):
+        self._num_subplots_created += 1
+        ax = self.fig.add_subplot(self.nrows, self.ncols, self._num_subplots_created)
+        return ax
+    
+    def save(self, filepath):
+        print(f"Save RTI figure to : {filepath}")
+        self.fig.subplots_adjust(hspace=.3, wspace=0.5)
+        self.fig.savefig(filepath, bbox_inches="tight")
+        return
+
+    def close(self):
+        self.fig.clf()
+        plt.close()
+        return
+    
+    def _add_colorbar(self, fig, ax, bounds, colormap, label=""):
+        """
+        Add a colorbar to the right of an axis.
+        """
+        import matplotlib as mpl
+        pos = ax.get_position()
+        cpos = [pos.x1 + 0.025, pos.y0 + 0.0125,
+                0.015, pos.height * 0.9]                # this list defines (left, bottom, width, height
+        cax = fig.add_axes(cpos)
+        norm = mpl.colors.BoundaryNorm(bounds, colormap.N)
+        cb2 = mpl.colorbar.ColorbarBase(cax, cmap=colormap,
+                                        norm=norm,
+                                        ticks=bounds,
+                                        spacing="uniform",
+                                        orientation="vertical")
+        cb2.set_label(label)
+        return
+    
+    def addHistPlot(self, o, title, yl="vh0", xlabel="Slant Rang, km", ylabel="Virtual Height, km",
+                    label=r"Probability"):
+        ax = self._add_axis()
+        cmap = plt.cm.Reds
+        ax.set_xlabel(xlabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.set_ylabel(ylabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.set_xlim([0, 4000])
+        ax.set_ylim([0, 2000])
+        H, xe, ye = np.histogram2d(o.srange, o[yl], bins=50)
+        xe, ye = xe[:-1], ye[:-1]
+        Xe, Ye = np.meshgrid(xe, ye)
+        im = ax.pcolormesh(Xe, Ye, H.T, lw=0.01, edgecolors="None", cmap=cmap)
+        cb = self.fig.colorbar(im, ax=ax, shrink=0.7)
+        cb.set_label(label)
+        ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
         return

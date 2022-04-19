@@ -3,6 +3,7 @@
    Author: S. Chakraborty
    This file is a v_Height estimator
 """
+import numpy as np
 
 def calculate_vHeight(r, elv, hop, Re = 6371.0):
     """
@@ -14,6 +15,6 @@ def calculate_vHeight(r, elv, hop, Re = 6371.0):
     Re: Earth radius in km
     """
    
-    h = np.sqrt(Re**2 + (r/(2*N))**2 + (r/N)*Re*np.sin(np.radians(elv))) - Re
+    h = np.sqrt(Re**2 + (r/(2*hop))**2 + (r/hop)*Re*np.sin(np.radians(elv))) - Re
       
     return h
