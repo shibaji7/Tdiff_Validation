@@ -66,35 +66,35 @@ def process_elevation_angle(date):
         d["srange"] = d.frang + (d.rsep*d.slist)
         # Fetch remore algo output files
         o = fetch_remote_dataset(date, rad)
-        d["ribiero_gflg"] = o.ribiero_gflg
-        
-        hdw = pydarn.read_hdw_file(rad)
-        cols = ["srange", "gflg", "ribiero_gflg"]
-        cols.extend(["elv"+str(i) for i in range(len(tdiffs))])
-        cols.extend(["vh"+str(i) for i in range(len(tdiffs))])
-        cols.extend(["trd_vh"+str(i)+"_sel" for i in range(len(tdiffs))])
-        cols.extend(["new_vh"+str(i)+"_sel" for i in range(len(tdiffs))])
-        for i, tdiff in enumerate(tdiffs):
-            d["elv"+str(i)] = calc_elv.caclulate_elevation_angle(np.array(d.phi0), np.array(d.bmnum),
-                                                                 np.array(d.tfreq), hdw, tdiff)
-            d["vh"+str(i)] = CV.calculate_vHeight(np.array(d.srange), np.array(d["elv"+str(i)]), hop=0.5)
-            
-            # Traditional IS/GS analysis
-            # Selected range-wise VH calc
-            srange, elv, gflg = np.array(d.srange), np.array(d["elv"+str(i)]), np.array(d.gflg)
-            vh_type = vh_type_calc(srange, elv, gflg)
-            d["trd_vh"+str(i)+"_sel"] = vh_type
-            
-            # New algo IS/GS analysis
-            # Selected range-wise VH calc
-            gflg = np.array(o.ribiero_gflg)
-            vh_type = vh_type_calc(srange, elv, gflg)
-            d["new_vh"+str(i)+"_sel"] = vh_type
-        d[cols].to_csv(fname, index=False, header=True, float_format="%g")
+        if len(o) == len(d):
+            d["ribiero_gflg"] = o.ribiero_gflg
+            hdw = pydarn.read_hdw_file(rad)
+            cols = ["srange", "gflg", "ribiero_gflg"]
+            cols.extend(["elv"+str(i) for i in range(len(tdiffs))])
+            cols.extend(["vh"+str(i) for i in range(len(tdiffs))])
+            cols.extend(["trd_vh"+str(i)+"_sel" for i in range(len(tdiffs))])
+            cols.extend(["new_vh"+str(i)+"_sel" for i in range(len(tdiffs))])
+            for i, tdiff in enumerate(tdiffs):
+                d["elv"+str(i)] = calc_elv.caclulate_elevation_angle(np.array(d.phi0), np.array(d.bmnum),
+                                                                     np.array(d.tfreq), hdw, tdiff)
+                d["vh"+str(i)] = CV.calculate_vHeight(np.array(d.srange), np.array(d["elv"+str(i)]), hop=0.5)
+
+                # Traditional IS/GS analysis
+                # Selected range-wise VH calc
+                srange, elv, gflg = np.array(d.srange), np.array(d["elv"+str(i)]), np.array(d.gflg)
+                vh_type = vh_type_calc(srange, elv, gflg)
+                d["trd_vh"+str(i)+"_sel"] = vh_type
+
+                # New algo IS/GS analysis
+                # Selected range-wise VH calc
+                gflg = np.array(o.ribiero_gflg)
+                vh_type = vh_type_calc(srange, elv, gflg)
+                d["new_vh"+str(i)+"_sel"] = vh_type
+            d[cols].to_csv(fname, index=False, header=True, float_format="%g")
     return
 
 if __name__ == "__main__":
-    sdate, edate = [dt.datetime(2012,1,1), dt.datetime(2012,3,1)]
+    sdate, edate = [dt.datetime(2012,1,1), dt.datetime(2012,10,1)]
     dates = []
     while sdate <= edate:
         dates.append(sdate)
