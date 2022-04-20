@@ -144,8 +144,8 @@ class Histogram2D(object):
     
     def __init__(self, is_gs_both=0, nrows=1, ncols=1, fig_title=""):
         self._num_subplots_created = 0
-        self.fig = plt.figure(figsize=(3*ncols, 3*nrows), dpi=180) # Size for website
-        plt.suptitle(fig_title, x=0.5, y=0.9, ha="center", va="center", fontweight="bold", fontsize=15)
+        self.fig = plt.figure(figsize=(6*ncols, 4*nrows), dpi=240) # Size for website
+        plt.suptitle(fig_title, x=0.5, y=0.95, ha="center", va="center", fontweight="bold", fontsize=15)
         self.nrows, self.ncols = nrows, ncols
         return
     
@@ -190,8 +190,8 @@ class Histogram2D(object):
         ax.set_xlabel(xlabel, fontdict={"size":12, "fontweight": "bold"})
         ax.set_ylabel(ylabel, fontdict={"size":12, "fontweight": "bold"})
         ax.set_xlim([0, 4000])
-        ax.set_ylim([0, 2000])
-        H, xe, ye = np.histogram2d(o.srange, o[yl], bins=50)
+        ax.set_ylim([0, 1000])
+        H, xe, ye = np.histogram2d(o.srange, o[yl], bins=40)
         xe, ye = xe[:-1], ye[:-1]
         Xe, Ye = np.meshgrid(xe, ye)
         im = ax.pcolormesh(Xe, Ye, H.T, lw=0.01, edgecolors="None", cmap=cmap)
