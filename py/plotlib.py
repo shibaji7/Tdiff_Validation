@@ -144,7 +144,7 @@ class Histogram2D(object):
     
     def __init__(self, is_gs_both=0, nrows=1, ncols=1, fig_title=""):
         self._num_subplots_created = 0
-        self.fig = plt.figure(figsize=(6*ncols, 4*nrows), dpi=240) # Size for website
+        self.fig = plt.figure(figsize=(6*ncols, 2*nrows), dpi=240) # Size for website
         plt.suptitle(fig_title, x=0.5, y=0.95, ha="center", va="center", fontweight="bold", fontsize=15)
         self.nrows, self.ncols = nrows, ncols
         return
@@ -190,12 +190,19 @@ class Histogram2D(object):
         ax.set_xlabel(xlabel, fontdict={"size":12, "fontweight": "bold"})
         ax.set_ylabel(ylabel, fontdict={"size":12, "fontweight": "bold"})
         ax.set_xlim([0, 4000])
-        ax.set_ylim([0, 1000])
-        H, xe, ye = np.histogram2d(o.srange, o[yl], bins=40)
+        ax.set_ylim([0, 2000])
+        H, xe, ye = np.histogram2d(o.srange, o[yl], bins=100, density=True)
         xe, ye = xe[:-1], ye[:-1]
         Xe, Ye = np.meshgrid(xe, ye)
-        im = ax.pcolormesh(Xe, Ye, H.T, lw=0.01, edgecolors="None", cmap=cmap)
+        im = ax.pcolormesh(Xe, Ye, Xe, H.T, lw=0.01, edgecolors="None",
+                           cmap=cmap, norm=mcolors.LogNorm(vmin=1e-8,vmax=1e-5))
         cb = self.fig.colorbar(im, ax=ax, shrink=0.7)
         cb.set_label(label)
         ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
+        return
+    
+    def addHistPlotBySct(self, o, kind, igs, title, yl="vh0", xlabel="Slant Rang, km", 
+                         ylabel="Virtual Height, km", label=r"Probability"):
+        o = o[o[kind]==igs]
+        self.addHistPlot(o, title, yl, xlabel, ylabel, label)
         return
