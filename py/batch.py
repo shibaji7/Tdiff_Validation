@@ -103,7 +103,7 @@ def process_elevation_angle(date):
             d[cols].to_csv(fname, index=False, header=True, float_format="%g")
     return
 
-def plot_ElRa_2Dhist(gtype, gkind):
+def plot_ElRa_2Dhist(gtype, gkind, vh):
     import glob
     from operator import and_
     files = glob.glob("outputs/ElRa/*%s-%d.csv"%(gtype,gkind))
@@ -119,6 +119,7 @@ def plot_ElRa_2Dhist(gtype, gkind):
                 Z = np.nansum(np.dstack((Z,z)),2)
         except: pass
     tdiff = -0.347
+    
     
     X, Y  = np.meshgrid( x, y )
     Zx = np.zeros_like(Z)
@@ -138,6 +139,7 @@ def plot_ElRa_2Dhist(gtype, gkind):
     fig.subplots_adjust(hspace=.3, wspace=0.5)
     ax.set_ylabel("Slant Range, km")
     ax.set_xlabel("Elevation Angle, degrees")
+    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
     fig.savefig("tmp/H2D.ElRa.%s-%d.png"%(gtype,gkind), bbox_inches="tight")
     
     fig = plt.figure(figsize=(5,4), dpi=150)
@@ -149,8 +151,27 @@ def plot_ElRa_2Dhist(gtype, gkind):
     ax.set_xlim(0,50)
     ax.set_ylabel("Slant Range, km")
     ax.set_xlabel("Elevation Angle, degrees")
+    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
     fig.subplots_adjust(hspace=.3, wspace=0.5)
     fig.savefig("tmp/H2D.ElRa-N.%s-%d.png"%(gtype,gkind), bbox_inches="tight")
+    
+    Y0 = np.zeros_like(Y)
+    for i in range(Y.shape[1]):
+        if type(vh) is float: Y0[:,i] = CV.calculate_vHeight(Y[:,i], X[:,i], 0.5)
+        if type(vh) is str: Y0[:,i] = vh_type_calc(Y[:,i], X[:,i], gkind)
+    vh = "half" if type(vh) is float else "comp"
+    fig = plt.figure(figsize=(5,2.5), dpi=150)
+    ax = fig.add_subplot(111)
+    im = ax.pcolormesh(Y.T, Y0.T, Zx.T, lw=0.01, edgecolors="None", cmap="Reds", vmax=0.04, vmin=0.01)
+    cb = fig.colorbar(im, ax=ax, shrink=0.7)
+    cb.set_label("Probability")
+    ax.set_ylim(0,2000)
+    ax.set_xlim(0,4000)
+    ax.set_ylabel("Slant Range, km")
+    ax.set_xlabel("Elevation Angle, degrees")
+    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
+    fig.subplots_adjust(hspace=.3, wspace=0.5)
+    fig.savefig("tmp/H2D.ElRa-N.%s-%d.%s.png"%(gtype,gkind,vh), bbox_inches="tight")
     return
 
 def plot_VhRa_2Dhist(gtype, gkind, vh):
@@ -171,18 +192,22 @@ def plot_VhRa_2Dhist(gtype, gkind, vh):
         except: pass
     X, Y  = np.meshgrid( x, y )
     Zx = np.zeros_like(Z)
-    for i in range(Zx.shape[0]):
-        Zx[i,:] = Z[i,:]/np.nansum(Z[i,:])
+    for i in range(Zx.shape[1]):
+        Zx[:,i] = Z[:,i]/np.nansum(Z[:,i])
         
-    fig = plt.figure(figsize=(5,4), dpi=150)
+    fig = plt.figure(figsize=(5,2.5), dpi=150)
     ax = fig.add_subplot(111)
-    im = ax.pcolormesh(Y, X, Zx, lw=0.01, edgecolors="None", cmap="Reds", vmax=0.04, vmin=0.01)
+    im = ax.pcolormesh(Y, X, Zx, lw=0.01, edgecolors="None", cmap="Reds", vmax=0.06, vmin=0.01)
     cb = fig.colorbar(im, ax=ax, shrink=0.7)
     cb.set_label("Probability")
     ax.set_ylim(0,2000)
     ax.set_xlim(0,4000)
     ax.set_xlabel("Slant Range, km")
     ax.set_ylabel("Virtual Height, km")
+    SR = np.linspace(0,4000,4001)
+    CH_model_val = [CV.chisham(x) for x in SR]
+    ax.plot(SR, CH_model_val, ls="--", lw=0.8, color="k")
+    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
     fig.subplots_adjust(hspace=.3, wspace=0.5)
     fig.savefig("tmp/H2D.VhRa.%s-%d.%s.png"%(gtype,gkind,vh), bbox_inches="tight")
     return
@@ -336,12 +361,14 @@ if __name__ == "__main__":
                 #process_monthly_VhRa_files(year=y, month=m)
                 #process_1D_histogram_dataset(year=y, month=m)
                 pass
-        plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=0)
-        plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=1)
-        plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=0)
-        plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=1)
-        #plot_1D_velocity_histogram()
-        plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=0,vh="vh0")
-        plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=1,vh="vh0")
-        plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=0,vh="trd_vh0_sel")
-        plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=1,vh="trd_vh0_sel")
+        plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=0,vh=0.5)
+        plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=1,vh=0.5)
+        plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=0,vh=0.5)
+        plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=1,vh=0.5)
+#         #plot_1D_velocity_histogram()
+#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=0,vh="vh0")
+#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=1,vh="vh0")
+#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=0,vh="trd_vh0_sel")
+#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=1,vh="trd_vh0_sel")
+#         plot_VhRa_2Dhist(gtype="ribiero_gflg",gkind=0,vh="new_vh0_sel")
+#         plot_VhRa_2Dhist(gtype="ribiero_gflg",gkind=1,vh="new_vh0_sel")
