@@ -52,6 +52,43 @@ def chisham(target_range: float, **kwargs):
         return A_const[2] + B_const[2] * target_range + C_const[2] *\
                  target_range**2
 
+def thomas(target_range: float, sctr_type: int):
+    """
+    Mapping ionospheric backscatter measured by the SuperDARN HF
+    radars – Part 1: A new empirical virtual height model by
+    E. Thomas 2022 
+    Parameters
+    ----------
+    target_range: float
+        is the range from radar to the target (echos)
+        sometimes known as slant range [km]
+    Returns
+    -------
+    altered target_range (slant range) [km]
+    """
+    u = np.array([1, target_range, target_range**2])
+    # Model constants
+    # GS
+    oneE = np.array([111.393, -1.65773e-4, 4.26675e-5])
+    oneF = np.array([378.022, -0.14738, 6.99712e-5])
+    twoF = np.array([-76.2406, 0.06854, 1.23078e-5])
+    # IS
+    hafE = np.array([108.873, -0.01444, 1.57806e-4])
+    hafF = np.array([341.005, -0.17484, 1.99144e-4])
+    ohF = np.array([92.9665, 0.03967, 1.59501e-5])
+
+    h = np.nan
+    # determine which region of ionosphere the gate
+    if sctr_type == 1:
+        if (target_range >= 560) and (target_range < 1140): h = np.sum(oneE * u)
+        elif (target_range >= 1140) and (target_range < 3265): h = np.sum(oneF * u)
+        elif (target_range >= 3265): h = np.sum(twoF * u)
+        else: h = np.nan
+    else:
+        if (target_range < 675): h = np.sum(hafE * u)
+        elif (target_range >= 675) and (target_range < 2275): h = np.sum(hafF * u)
+        else: h = np.sum(ohF * u)
+    return h
 
 def standard_virtual_height(target_range: float, cell_height: int = 300,
                             **kwargs):
