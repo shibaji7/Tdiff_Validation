@@ -148,7 +148,7 @@ def plot_comp_plots(vh=0.5, th=41):
             
             ax0 = fig0.add_subplot(220+ii)
             im0 = ax0.pcolormesh(X, Y, Zj, lw=0.01, edgecolors="None", cmap="jet", 
-                                 norm=mcolors.LogNorm(1e-5,1e-1))
+                                 norm=mcolors.LogNorm(1e-5,1e-2))
             ax0.set_ylim(0,4000)
             ax0.set_xlim(0,50)
             axs0.append(ax0)
@@ -360,6 +360,7 @@ def process_monthly_ElRa_files(year=2014, month="Jan", gtypes=["trad_gsflg", "ri
             if not os.path.exists(fname):
                 if d is None: d = fetch_monthly_data()
                 du = d[(d[gtype]==gkind) & (d.elv0<=th)]
+                du.drop(du[du.ribiero_gflg==-1].index, inplace=True)
                 du["binsrang"] = du.srange.apply(lambda x: 45*int(x/45))
                 du["binelv0"] = du.elv0.apply(lambda x: 0.5*int(x/0.5))
                 du = du.groupby( ["binsrang", "binelv0"] ).size().reset_index(name="Size")
@@ -488,10 +489,10 @@ if __name__ == "__main__":
                                                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         for y in years:
             for m in months:
-                #process_monthly_ElRa_files(year=y, month=m, th=41)
+                #process_monthly_ElRa_files(year=y, month=m, th=50)
                 #process_1D_histogram_dataset(year=y, month=m)
                 pass
-        plot_comp_plots(vh="comp")
+        plot_comp_plots(vh="comp", th=50)
 #         plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=0,vh=0.5)
 #         plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=1,vh=0.5)
 #         plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=0,vh=0.5)
