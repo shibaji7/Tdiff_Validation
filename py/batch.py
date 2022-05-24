@@ -105,6 +105,7 @@ def process_elevation_angle(date):
 
 def plot_comp_plots(vh=0.5, th=41):
     tdiff = -0.347
+    Zmax = []
     def get_query(gtype,gkind,th):
         import glob
         from operator import and_
@@ -123,12 +124,13 @@ def plot_comp_plots(vh=0.5, th=41):
         
         X, Y  = np.meshgrid( x, y )
         Zx = np.zeros_like(Z)
-        Zj = Z / np.nansum(Z)
+        Zj = Z
+        Zmax.append(np.nansum(Z))
         iX, zX = [], []
         for i in range(Zx.shape[0]):
             Zx[i,:] = Z[i,:]/np.nansum(Z[i,:])
             iX.append(np.nanargmax(Zx[i,:]))
-        Zx[Zx<0.01] = np.nan
+        #Zx[Zx<0.001] = np.nan
         Y0 = np.zeros_like(Y)
         for i in range(Y.shape[1]):
             if type(vh) is float: Y0[:,i] = CV.calculate_vHeight(Y[:,i], X[:,i], 0.5)
@@ -143,11 +145,14 @@ def plot_comp_plots(vh=0.5, th=41):
     fig2, axs2 = plt.figure(figsize=(5,3), dpi=240), []
     for gtype in ["trad_gsflg", "ribiero_gflg"]:
         for gkind in [0, 1]:
+            _ = get_query(gtype,gkind,th)
+    for gtype in ["trad_gsflg", "ribiero_gflg"]:
+        for gkind in [0, 1]:
             x, y, X, Y, Y0, Zx, Zj, zX = get_query(gtype,gkind,th)
             Zj = gaussian_filter(Zj, 1)
             
             ax0 = fig0.add_subplot(220+ii)
-            im0 = ax0.pcolormesh(X, Y, Zj, lw=0.01, edgecolors="None", cmap="jet", 
+            im0 = ax0.pcolormesh(X, Y, Zj/np.max(Zmax), edgecolors="None", cmap="jet", 
                                  norm=mcolors.LogNorm(1e-5,1e-2))
             ax0.set_ylim(0,4000)
             ax0.set_xlim(0,50)
@@ -161,8 +166,10 @@ def plot_comp_plots(vh=0.5, th=41):
             if (ii == 1) or (ii == 2): ax0.set_xticklabels([])
             if (ii == 2) or (ii == 4): ax0.set_yticklabels([])
                 
+            Zxi = gaussian_filter(Zx, 1)
+            Zxi[Zxi<0.012] = np.nan
             ax1 = fig1.add_subplot(220+ii)
-            im1 = ax1.pcolormesh(X.T, Y.T, Zx.T, lw=0.01, edgecolors="None", cmap="Reds",
+            im1 = ax1.pcolormesh(X.T, Y.T, Zxi.T, lw=0.01, edgecolors="None", cmap="Reds",
                                  vmax=0.04, vmin=0.01)
             ax1.set_ylim(0,4000)
             ax1.set_xlim(0,50)
@@ -176,8 +183,10 @@ def plot_comp_plots(vh=0.5, th=41):
             if (ii == 1) or (ii == 2): ax1.set_xticklabels([])
             if (ii == 2) or (ii == 4): ax1.set_yticklabels([])
                 
+            Zxj = gaussian_filter(Zx, 1.5)
+            Zxj[Zxj<0.012] = np.nan
             ax2 = fig2.add_subplot(220+ii)
-            im2 = ax2.pcolormesh(Y.T, Y0.T, Zx.T, lw=0.01, edgecolors="None", cmap="Reds", 
+            im2 = ax2.pcolormesh(Y.T, Y0.T, Zxj.T, lw=0.01, edgecolors="None", cmap="Reds", 
                                  vmax=0.04, vmin=0.01)
             ax2.plot(y, [CV.chisham(yi) for yi in y], color="w", lw=1, ls="-")
             ax2.plot(y, [CV.chisham(yi) for yi in y], color="b", lw=0.9, ls="-")
@@ -489,10 +498,10 @@ if __name__ == "__main__":
                                                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         for y in years:
             for m in months:
-                #process_monthly_ElRa_files(year=y, month=m, th=50)
+                #process_monthly_ElRa_files(year=y, month=m, th=41)
                 #process_1D_histogram_dataset(year=y, month=m)
                 pass
-        plot_comp_plots(vh="comp", th=50)
+        plot_comp_plots(vh="comp", th=41)
 #         plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=0,vh=0.5)
 #         plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=1,vh=0.5)
 #         plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=0,vh=0.5)
