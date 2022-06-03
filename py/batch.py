@@ -21,6 +21,7 @@ import pandas as pd
 from multiprocessing import Pool
 from scipy.ndimage import gaussian_filter
 import pickle
+from matplotlib.dates import num2date
 
 import pydarn
 from get_fit_data import FetchData
@@ -40,6 +41,25 @@ from matplotlib.ticker import MultipleLocator
 import random
 from matplotlib import patches
 import matplotlib.patches as mpatches
+
+def sunriseset(rad, dates):
+    import rad_fov
+    import pydarn
+    from astral.sun import sun
+    from astral import Observer
+    dumin, ix = 15, 0
+    suntime = {"doy":[], "sunrise":[], "sunset":[], "index":[]}
+    hdw = pydarn.read_hdw_file(rad)
+    rfov = rad_fov.CalcFov(hdw=hdw, ngates=100)
+    lat, lon = np.mean(rfov.latFull.ravel()) , np.mean(rfov.lonFull.ravel())
+    for _i, dn in enumerate(dates):
+        o = Observer(rfov.latFull[0,0],rfov.lonFull[0,0])
+        s = sun(o, date=dn)
+        #suntime["doy"].append(dn.dayofyear)
+        suntime["index"].append(_i)
+        suntime["sunrise"].append(s["sunrise"].hour+1 + (dumin/60.)*int(s["sunrise"].minute/dumin))
+        suntime["sunset"].append(s["sunset"].hour+1 + (dumin/60.)*int(s["sunset"].minute/dumin))
+    return suntime
 
 def fetch_remote_dataset(date, rad):
     conn = utils.get_session(key_filename=utils.get_pubfile())
@@ -79,7 +99,7 @@ def process_elevation_angle(date):
         d = fetch_remote_dataset(date, rad)
         if ("ribiero_gflg" in d.columns.tolist()):
             hdw = pydarn.read_hdw_file(rad)
-            cols = ["srange", "trad_gsflg", "ribiero_gflg", "v", "w_l", "tfreq", "bmnum"]
+            cols = ["srange", "trad_gsflg", "ribiero_gflg", "v", "w_l", "tfreq", "bmnum", "time"]
             cols.extend(["elv"+str(i) for i in range(len(tdiffs))])
             cols.extend(["vh"+str(i) for i in range(len(tdiffs))])
             cols.extend(["trd_vh"+str(i)+"_sel" for i in range(len(tdiffs))])
@@ -126,45 +146,59 @@ def plot_comp_plots(vh=0.5, th=41):
         Zx = np.zeros_like(Z)
         Zj = Z
         Zmax.append(np.nansum(Z))
-        iX, zX = [], []
         for i in range(Zx.shape[0]):
             Zx[i,:] = Z[i,:]/np.nansum(Z[i,:])
-            iX.append(np.nanargmax(Zx[i,:]))
         #Zx[Zx<0.001] = np.nan
         Y0 = np.zeros_like(Y)
         for i in range(Y.shape[1]):
             if type(vh) is float: Y0[:,i] = CV.calculate_vHeight(Y[:,i], X[:,i], 0.5)
             if type(vh) is str: Y0[:,i] = vh_type_calc(Y[:,i], X[:,i], gkind)
-        for i in range(Y0.shape[0]):
-            zX.append(Y0[i,0])
-        return x, y, X, Y, Y0, Zx, Zj, zX
+        return x, y, X, Y, Y0, Zx, Zj
     
     ii, labs = 1, [("(a)","Trad"), ("(b)","Trad"), ("(c)","ML"), ("(d)","ML")]
-    fig0, axs0 = plt.figure(figsize=(5,4), dpi=240), []
-    fig1, axs1 = plt.figure(figsize=(5,4), dpi=240), []
-    fig2, axs2 = plt.figure(figsize=(5,3), dpi=240), []
+    fig0, axs0 = plt.figure(figsize=(5,4), dpi=300), []
+    fig1, axs1 = plt.figure(figsize=(5,4), dpi=300), []
+    fig2, axs2 = plt.figure(figsize=(5,3), dpi=300), []
+    fig4, axs4 = plt.figure(figsize=(5,4), dpi=300), []
     for gtype in ["trad_gsflg", "ribiero_gflg"]:
         for gkind in [0, 1]:
             _ = get_query(gtype,gkind,th)
     for gtype in ["trad_gsflg", "ribiero_gflg"]:
         for gkind in [0, 1]:
-            x, y, X, Y, Y0, Zx, Zj, zX = get_query(gtype,gkind,th)
+            x, y, X, Y, Y0, Zx, Zj = get_query(gtype,gkind,th)
             Zj = gaussian_filter(Zj, 1)
             
             ax0 = fig0.add_subplot(220+ii)
             im0 = ax0.pcolormesh(X, Y, Zj/np.max(Zmax), edgecolors="None", cmap="jet", 
                                  norm=mcolors.LogNorm(1e-5,1e-2))
             ax0.set_ylim(0,4000)
-            ax0.set_xlim(0,50)
+            ax0.set_xlim(0,th)
             axs0.append(ax0)
             ax0.text(.99, .9, "IS" if gkind==0 else "GS", ha="right", va="center", 
-                     transform=ax0.transAxes, fontdict={"color":"k"})
+                     transform=ax0.transAxes, fontdict={"color":"w"})
             ax0.text(.05, .9, labs[ii-1][0], ha="left", va="center", transform=ax0.transAxes, 
                      fontdict={"color":"w"})
             ax0.text(.99, 1.05, "Method: %s"%labs[ii-1][1], ha="right", va="center", 
                      transform=ax0.transAxes, fontdict={"color":"k"})
             if (ii == 1) or (ii == 2): ax0.set_xticklabels([])
             if (ii == 2) or (ii == 4): ax0.set_yticklabels([])
+            ax0.set_xlim(0,th)
+            
+            ax4 = fig4.add_subplot(220+ii)
+            im4 = ax4.pcolormesh(X, Y, Zj/np.nansum(Zj), edgecolors="None", cmap="jet", 
+                                 norm=mcolors.LogNorm(1e-5,1e-2))
+            ax4.set_ylim(0,4000)
+            ax4.set_xlim(0,th)
+            axs4.append(ax4)
+            ax4.text(.99, .9, "IS" if gkind==0 else "GS", ha="right", va="center", 
+                     transform=ax4.transAxes, fontdict={"color":"w"})
+            ax4.text(.05, .9, labs[ii-1][0], ha="left", va="center", transform=ax4.transAxes, 
+                     fontdict={"color":"w"})
+            ax4.text(.99, 1.05, "Method: %s"%labs[ii-1][1], ha="right", va="center", 
+                     transform=ax4.transAxes, fontdict={"color":"k"})
+            if (ii == 1) or (ii == 2): ax4.set_xticklabels([])
+            if (ii == 2) or (ii == 4): ax4.set_yticklabels([])
+            
                 
             Zxi = gaussian_filter(Zx, 1)
             Zxi[Zxi<0.012] = np.nan
@@ -207,7 +241,7 @@ def plot_comp_plots(vh=0.5, th=41):
             ii += 1
     cax = ax0.inset_axes([1.04, 0.1, 0.05, 0.8], transform=ax0.transAxes)
     cb0 = fig0.colorbar(im0, ax=ax0, cax=cax)
-    cb0.set_label("Probability")
+    cb0.set_label("Occurrence Rate")
     axs0[0].set_ylabel("Slant Range, km")
     axs0[2].set_ylabel("Slant Range, km")
     axs0[2].set_xlabel("Elevation Angle, degrees")
@@ -240,115 +274,18 @@ def plot_comp_plots(vh=0.5, th=41):
                  transform=axs2[0].transAxes)
     fig2.subplots_adjust(hspace=.2, wspace=.2)
     fig2.savefig("tmp/H2D.VhRaN.png", bbox_inches="tight")
-    return
-
-def plot_ElRa_2Dhist(gtype, gkind, vh):
-    import glob
-    from operator import and_
-    files = glob.glob("outputs/ElRa/*%s-%d.csv"%(gtype,gkind))
-    for i, f in enumerate(files):
-        try:
-            if i ==0: 
-                o = pd.read_csv(f, index_col=0)
-                x, y = np.array(o.iloc[0]), np.array([float(m) for m in o.index.tolist()[2:]])
-                Z = o.values[2:,:]
-            else: 
-                o = pd.read_csv(f, index_col=0)
-                z = np.ma.masked_invalid(o.values[2:,:])
-                Z = np.nansum(np.dstack((Z,z)),2)
-        except: pass
-    tdiff = -0.347
     
-    
-    X, Y  = np.meshgrid( x, y )
-    Zx = np.zeros_like(Z)
-    Zj = Z / np.nansum(Z)
-    for i in range(Zx.shape[0]):
-        Zx[i,:] = Z[i,:]/np.nansum(Z[i,:])
-    
-    
-    fig = plt.figure(figsize=(5,4), dpi=150)
-    ax = fig.add_subplot(111)
-    Zj = gaussian_filter(Zj, 1)
-    im = ax.pcolormesh(X, Y, Zj, lw=0.01, edgecolors="None", cmap="jet", norm=mcolors.LogNorm(1e-5,1e-1))
-    cb = fig.colorbar(im, ax=ax, shrink=0.7)
-    cb.set_label("Probability")
-    ax.set_ylim(0,4000)
-    ax.set_xlim(0,50)
-    fig.subplots_adjust(hspace=.3, wspace=0.5)
-    ax.set_ylabel("Slant Range, km")
-    ax.set_xlabel("Elevation Angle, degrees")
-    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
-    fig.savefig("tmp/H2D.ElRa.%s-%d.png"%(gtype,gkind), bbox_inches="tight")
-    
-    fig = plt.figure(figsize=(5,4), dpi=150)
-    ax = fig.add_subplot(111)
-    im = ax.pcolormesh(X.T, Y.T, Zx.T, lw=0.01, edgecolors="None", cmap="Reds", vmax=0.04, vmin=0.01)
-    cb = fig.colorbar(im, ax=ax, shrink=0.7)
-    cb.set_label("Probability")
-    ax.set_ylim(0,4000)
-    ax.set_xlim(0,50)
-    ax.set_ylabel("Slant Range, km")
-    ax.set_xlabel("Elevation Angle, degrees")
-    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
-    fig.subplots_adjust(hspace=.3, wspace=0.5)
-    fig.savefig("tmp/H2D.ElRa-N.%s-%d.png"%(gtype,gkind), bbox_inches="tight")
-    
-    Y0 = np.zeros_like(Y)
-    for i in range(Y.shape[1]):
-        if type(vh) is float: Y0[:,i] = CV.calculate_vHeight(Y[:,i], X[:,i], 0.5)
-        if type(vh) is str: Y0[:,i] = vh_type_calc(Y[:,i], X[:,i], gkind)
-    vh = "half" if type(vh) is float else "comp"
-    fig = plt.figure(figsize=(5,2.5), dpi=150)
-    ax = fig.add_subplot(111)
-    im = ax.pcolormesh(Y.T, Y0.T, Zx.T, lw=0.01, edgecolors="None", cmap="Reds", vmax=0.04, vmin=0.01)
-    cb = fig.colorbar(im, ax=ax, shrink=0.7)
-    cb.set_label("Probability")
-    ax.set_ylim(0,2000)
-    ax.set_xlim(0,4000)
-    ax.set_ylabel("Slant Range, km")
-    ax.set_xlabel("Elevation Angle, degrees")
-    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
-    fig.subplots_adjust(hspace=.3, wspace=0.5)
-    fig.savefig("tmp/H2D.ElRa-N.%s-%d.%s.png"%(gtype,gkind,vh), bbox_inches="tight")
-    return
-
-def plot_VhRa_2Dhist(gtype, gkind, vh):
-    import glob
-    from operator import and_
-    print("outputs/VhRa/*%s-%d.%s.csv"%(gtype,gkind,vh))
-    files = glob.glob("outputs/VhRa/*%s-%d.%s.csv"%(gtype,gkind,vh))
-    for i, f in enumerate(files):
-        try:
-            if i ==0: 
-                o = pd.read_csv(f, index_col=0)
-                x, y = np.array(o.iloc[0]), np.array([float(m) for m in o.index.tolist()[2:]])
-                Z = o.values[2:,:]
-            else: 
-                o = pd.read_csv(f, index_col=0)
-                z = np.ma.masked_invalid(o.values[2:,:])
-                Z = np.nansum(np.dstack((Z,z)),2)
-        except: pass
-    X, Y  = np.meshgrid( x, y )
-    Zx = np.zeros_like(Z)
-    for i in range(Zx.shape[1]):
-        Zx[:,i] = Z[:,i]/np.nansum(Z[:,i])
-        
-    fig = plt.figure(figsize=(5,2.5), dpi=150)
-    ax = fig.add_subplot(111)
-    im = ax.pcolormesh(Y, X, Zx, lw=0.01, edgecolors="None", cmap="Reds", vmax=0.06, vmin=0.01)
-    cb = fig.colorbar(im, ax=ax, shrink=0.7)
-    cb.set_label("Probability")
-    ax.set_ylim(0,2000)
-    ax.set_xlim(0,4000)
-    ax.set_xlabel("Slant Range, km")
-    ax.set_ylabel("Virtual Height, km")
-    SR = np.linspace(0,4000,4001)
-    CH_model_val = [CV.chisham(x) for x in SR]
-    ax.plot(SR, CH_model_val, ls="--", lw=0.8, color="k")
-    ax.text(.9, .9, "IS" if gkind==0 else "GS", ha="left", va="center", transform=ax.transAxes)
-    fig.subplots_adjust(hspace=.3, wspace=0.5)
-    fig.savefig("tmp/H2D.VhRa.%s-%d.%s.png"%(gtype,gkind,vh), bbox_inches="tight")
+    cax = ax4.inset_axes([1.04, 0.1, 0.05, 0.8], transform=ax0.transAxes)
+    cb4 = fig4.colorbar(im4, ax=ax4, cax=cax)
+    cb4.set_label("Probability")
+    axs4[0].set_ylabel("Slant Range, km")
+    axs4[2].set_ylabel("Slant Range, km")
+    axs4[2].set_xlabel("Elevation Angle, degrees")
+    axs4[3].set_xlabel("Elevation Angle, degrees")
+    axs4[0].text(.05, 1.05, r"$T_{diff}=%d$ ns"%(tdiff*1e3), ha="left", va="center", 
+                 transform=axs4[0].transAxes)
+    fig4.subplots_adjust(hspace=.2, wspace=.2)
+    fig4.savefig("tmp/H2D.ElRaP.png", bbox_inches="tight")
     return
 
 def process_monthly_ElRa_files(year=2014, month="Jan", gtypes=["trad_gsflg", "ribiero_gflg"], 
@@ -377,34 +314,104 @@ def process_monthly_ElRa_files(year=2014, month="Jan", gtypes=["trad_gsflg", "ri
                 du.to_csv(fname)
     return
 
-def process_monthly_VhRa_files(year=2014, month="Jan", gtypes=["trad_gsflg", "ribiero_gflg"], 
-                               gkinds=[0, 1], vhs=["vh0","trd_vh0_sel","new_vh0_sel"]):
+def process_2D_histogram_dataset(year=2014, month="Jan", gtypes=["trad_gsflg", "ribiero_gflg"], 
+                               gkinds=[0, 1, -1]):
+    import swifter
     def fetch_monthly_data():
         import glob
         files = glob.glob("outputs/cluster_tags/*%s*%d.csv"%(month, year))
         files.sort()
         o = pd.DataFrame()
         for i, f in enumerate(files):
-            o = pd.concat([o, pd.read_csv(f)])
+            m = pd.read_csv(f)
+            start = dt.datetime.strptime(f.split("/")[-1].replace(".csv", ""), "%d-%b-%Y")
+            fdata = FetchData( "cvw", [start,start+dt.timedelta(1)] )
+            b, _ = fdata.fetch_data()
+            ox = fdata.convert_to_pandas(b)
+            if len(ox) == len(m):
+                m["month"] = ox.time.swifter.apply(lambda x: x.month)
+                m["hour"] = ox.time.swifter.apply(lambda x: x.hour)
+                o = pd.concat([o, m])
         return o
     
-    d = pd.DataFrame()
-    for gtype in gtypes:
-        for gkind in gkinds:
-            for vh in vhs:
-                fname = "outputs/VhRa/%s-%d.%s-%d.%s.csv"%(month,year,gtype,gkind,vh)
-                print(fname)
-                if not os.path.exists(fname):
-                    if len(d)==0: d = fetch_monthly_data()
-                    du = d[d[gtype]==gkind]
-                    du["binsrang"] = du.srange.apply(lambda x: 45*int(x/45))
-                    du["bin"+vh] = du[vh].apply(lambda x: 10*int(x/10))
-                    du = du.groupby( ["binsrang", "bin"+vh] ).size().reset_index(name="Size")
-                    du = du[ ["binsrang", "bin"+vh, "Size"] ].pivot( "binsrang", "bin"+vh )
-                    du.to_csv(fname)
+    fname = "outputs/H2D/%s-%d.pickle"%(month,year)
+    o = {}
+    d = None
+    if not os.path.exists(fname):
+        for gtype in gtypes:
+            for gkind in gkinds:
+                    if d is None: d = fetch_monthly_data()
+                    du = d[(d[gtype]==gkind)]
+                    #if gkind!=-1: du.drop(du[du.ribiero_gflg==-1].index, inplace=True)
+                    H, xedges, yedges = np.histogram2d(du.hour, du.month, bins=[np.arange(25), np.arange(1,14)])
+                    #print(H, xedges, yedges)
+                    #print(H.shape, xedges, yedges)
+                    #du = du.groupby( ["month", "hour"] ).size().reset_index(name="Size")
+                    #du = du[ ["month", "hour", "Size"] ].pivot( "month", "hour" )
+                    o[gtype+str(gkind)] = (H, xedges, yedges)
+        with open(fname, "wb") as handle:
+            pickle.dump(o, handle, protocol=pickle.HIGHEST_PROTOCOL)
     return
 
-
+def plot_2D_histogram():
+    import glob
+    files = glob.glob("outputs/H2D/*.pickle")
+    dates = [dt.datetime(2014,1,1)+dt.timedelta(30*i) for i in range(60)]
+    suntime = sunriseset("cvw", dates)
+    files.sort()
+    dataset = {}
+    keys = ["trad_gsflg0", "trad_gsflg1", "ribiero_gflg0", "ribiero_gflg1"]
+    years = [2014,2015,2016,2017,2018]
+    for y in years:
+        dataset[y] = {}
+        for k in keys:
+            dataset[y][k] = {"dat": None, "Y": None, "H": None}
+    
+    for f in files:
+        y = int(f.split("-")[-1].split(".")[0])
+        with open(f, "rb") as h: o = pickle.load(h)
+        for k in keys:
+            if dataset[y][k]["dat"] is None: 
+                dataset[y][k]["dat"] = o[k][0]
+                dataset[y][k]["H"], dataset[y][k]["Y"] = o[k][1], o[k][2]
+            else: dataset[y][k]["dat"] += o[k][0]
+    H, Y = [], []
+    dat = {}
+    for y in years:
+        Y.extend( y + ((dataset[y]["trad_gsflg0"]["Y"][:-1]-1)/12) )
+        for k in keys:
+            if k not in dat.keys(): dat[k] = dataset[y][k]["dat"]
+            else: dat[k] = np.hstack((dat[k],dataset[y][k]["dat"]))
+    H.extend( dataset[y]["trad_gsflg0"]["H"][:-1] )
+    H, Y = np.array(H), np.array(Y)
+    fig0, axs0 = plt.figure(figsize=(5,4), dpi=300), []
+    for ii, key in enumerate(keys):
+        gkind = int(key[-1])
+        ax0 = fig0.add_subplot(221+ii)
+        ZZ = dat[key]
+        im0 = ax0.pcolormesh(H, Y, ZZ.T/np.nansum(ZZ), edgecolors="None", 
+                             cmap="jet", norm=mcolors.LogNorm(1e-5,1e-2))
+        axs0.append(ax0)
+        ax0.text(.99, 1.05, "IS" if gkind==0 else "GS", ha="right", va="center", 
+                 transform=ax0.transAxes, fontdict={"color":"k"})
+        ax0.set_yticks([2014, 2015, 2016, 2017, 2018, 2019])
+        if (ii == 0) or (ii == 1): ax0.set_xticklabels([])
+        if (ii == 1) or (ii == 3): ax0.set_yticklabels([])
+        ax0.plot(suntime["sunrise"], Y, color="k", lw=0.8, ls="--")
+        ax0.plot(suntime["sunset"], Y, color="k", lw=0.8, ls="--")
+    cax = ax0.inset_axes([1.04, 0.1, 0.05, 0.8], transform=ax0.transAxes)
+    cb0 = fig0.colorbar(im0, ax=ax0, cax=cax)
+    cb0.set_label("Probability")
+    axs0[0].set_ylabel("Years")
+    axs0[2].set_ylabel("Years")
+    axs0[2].set_xlabel("Hours, UT")
+    axs0[3].set_xlabel("Hours, UT")
+    axs0[0].text(.05, 1.05, r"$T_{diff}=%d$ ns"%(-347), ha="left", va="center", 
+                 transform=axs0[0].transAxes)
+    fig0.subplots_adjust(hspace=.2, wspace=.2)
+    fig0.savefig("tmp/H2D.HrYr.png", bbox_inches="tight")
+    return
+    
 def process_1D_histogram_dataset(year=2014, month="Jan", gtypes=["trad_gsflg", "ribiero_gflg"], 
                                gkinds=[0, 1, -1]):
     def fetch_monthly_data():
@@ -500,16 +507,9 @@ if __name__ == "__main__":
             for m in months:
                 #process_monthly_ElRa_files(year=y, month=m, th=41)
                 #process_1D_histogram_dataset(year=y, month=m)
+                #process_2D_histogram_dataset(year=y, month=m)
                 pass
-        plot_comp_plots(vh="comp", th=41)
-#         plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=0,vh=0.5)
-#         plot_ElRa_2Dhist(gtype="trad_gsflg",gkind=1,vh=0.5)
-#         plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=0,vh=0.5)
-#         plot_ElRa_2Dhist(gtype="ribiero_gflg",gkind=1,vh=0.5) 
-#         #plot_1D_velocity_histogram()
-#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=0,vh="vh0")
-#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=1,vh="vh0")
-#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=0,vh="trd_vh0_sel")
-#         plot_VhRa_2Dhist(gtype="trad_gsflg",gkind=1,vh="trd_vh0_sel")
-#         plot_VhRa_2Dhist(gtype="ribiero_gflg",gkind=0,vh="new_vh0_sel")
-#         plot_VhRa_2Dhist(gtype="ribiero_gflg",gkind=1,vh="new_vh0_sel")
+                #break
+            #break
+        #plot_comp_plots(vh="comp", th=41)
+        plot_2D_histogram()
