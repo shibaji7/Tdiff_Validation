@@ -385,6 +385,7 @@ def plot_2D_histogram():
     H.extend( dataset[y]["trad_gsflg0"]["H"][:-1] )
     H, Y = np.array(H), np.array(Y)
     fig0, axs0 = plt.figure(figsize=(5,4), dpi=300), []
+    labs = [("(a)", "Trad"), ("(b)", "Trad"), ("(c)", "New"), ("(d)", "Trad")]
     for ii, key in enumerate(keys):
         gkind = int(key[-1])
         ax0 = fig0.add_subplot(221+ii)
@@ -392,7 +393,13 @@ def plot_2D_histogram():
         im0 = ax0.pcolormesh(H, Y, ZZ.T/np.nansum(ZZ), edgecolors="None", 
                              cmap="jet", norm=mcolors.LogNorm(1e-5,1e-2))
         axs0.append(ax0)
-        ax0.text(.99, 1.05, "IS" if gkind==0 else "GS", ha="right", va="center", 
+        #ax0.text(.99, 1.05, "IS" if gkind==0 else "GS", ha="right", va="center", 
+        #         transform=ax0.transAxes, fontdict={"color":"k"})
+        ax0.text(.99, .9, "IS" if gkind==0 else "GS", ha="right", va="center", 
+                 transform=ax0.transAxes, fontdict={"color":"k"})
+        ax0.text(.05, .9, labs[ii][0], ha="left", va="center", transform=ax0.transAxes, 
+                 fontdict={"color":"k"})
+        ax0.text(.99, 1.05, "Method: %s"%labs[ii][1], ha="right", va="center", 
                  transform=ax0.transAxes, fontdict={"color":"k"})
         ax0.set_yticks([2014, 2015, 2016, 2017, 2018, 2019])
         if (ii == 0) or (ii == 1): ax0.set_xticklabels([])
@@ -463,10 +470,14 @@ def plot_1D_velocity_histogram():
                 O["ribiero_gflg1"] += x["ribiero_gflg1"]["h"]
                 O["ribiero_gflg-1"] += x["ribiero_gflg-1"]["h"]
         except: pass
-    fig, axes = plt.subplots(dpi=180, figsize=(6, 2.5), nrows=1, ncols=2, sharey=True)
+    fig, axes = plt.subplots(dpi=180, figsize=(8, 3), nrows=1, ncols=2, sharey=True)
     ax = axes[0]
     ax.plot(be[:-1], O["trad_gsflg1"], color="b", lw=0.8, ls="-", drawstyle="steps-pre", label="GS")
+    ax.text(0.9, 0.6, r"$\bar{V}_{GS},C_{GS}$=%.1f, %.2f$\times 10^8$"%(np.average(be[:-1], weights=O["trad_gsflg1"]), np.sum(O["trad_gsflg1"])/1e8),
+           ha="right", va="top", transform=ax.transAxes, fontdict={"color":"b"})
     ax.plot(be[:-1], O["trad_gsflg0"], color="r", lw=0.8, ls="-", drawstyle="steps-pre", label="IS")
+    ax.text(0.9, 0.7, r"$\bar{V}_{IS},C_{IS}$=%.1f, %.2f$\times 10^8$"%(np.average(be[:-1], weights=O["trad_gsflg0"]), np.sum(O["trad_gsflg0"])/1e8),
+           ha="right", va="top", transform=ax.transAxes, fontdict={"color":"r"})
     ax.set_ylabel("Histogram")
     ax.set_xlabel("Velocity (m/s)")
     ax.legend(loc=1, fontsize=8)
@@ -476,8 +487,14 @@ def plot_1D_velocity_histogram():
     ax.text(0.01,1.05, "Traditional", ha="left", va="center", transform=ax.transAxes)
     ax = axes[1]
     ax.plot(be[:-1], O["ribiero_gflg1"], color="b", lw=0.8, ls="-", drawstyle="steps-pre", label="GS")
+    ax.text(0.9, 0.6, r"$\bar{V}_{GS},C_{GS}$=%.1f, %.2f$\times 10^8$"%(np.average(be[:-1], weights=O["ribiero_gflg1"]), np.sum(O["ribiero_gflg1"])/1e8),
+           ha="right", va="top", transform=ax.transAxes, fontdict={"color":"b"})
     ax.plot(be[:-1], O["ribiero_gflg0"], color="r", lw=0.8, ls="-", drawstyle="steps-pre", label="IS")
+    ax.text(0.9, 0.7, r"$\bar{V}_{IS},C_{IS}$=%.1f, %.2f$\times 10^8$"%(np.average(be[:-1], weights=O["ribiero_gflg0"]), np.sum(O["ribiero_gflg0"])/1e8),
+           ha="right", va="top", transform=ax.transAxes, fontdict={"color":"r"})
     ax.plot(be[:-1], O["ribiero_gflg-1"], color="k", lw=0.8, ls="-", drawstyle="steps-pre", label="US")
+    ax.text(0.9, 0.5, r"$\bar{V}_{US},C_{US}$=%.1f, %.2f$\times 10^8$"%(np.average(be[:-1], weights=O["ribiero_gflg-1"]), np.sum(O["ribiero_gflg-1"])/1e8),
+           ha="right", va="top", transform=ax.transAxes, fontdict={"color":"k"})
     ax.set_xlabel("Velocity (m/s)")
     ax.legend(loc=1, fontsize=8)
     ax.set_xlim(0, 80)
@@ -512,4 +529,5 @@ if __name__ == "__main__":
                 #break
             #break
         #plot_comp_plots(vh="comp", th=41)
-        plot_2D_histogram()
+        #plot_2D_histogram()
+        plot_1D_velocity_histogram()
