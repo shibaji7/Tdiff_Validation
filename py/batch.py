@@ -297,6 +297,10 @@ def process_monthly_ElRa_files(year=2014, month="Jan", gtypes=["trad_gsflg", "ri
         o = pd.DataFrame()
         for i, f in enumerate(files):
             o = pd.concat([o, pd.read_csv(f)])
+        srange = np.array(o.srange)
+        flag = np.array(o.ribiero_gflg)
+        flag[srange<=(45*7+180)] = -1
+        o.ribiero_gflg = flag
         return o
     
     d = None
@@ -306,7 +310,9 @@ def process_monthly_ElRa_files(year=2014, month="Jan", gtypes=["trad_gsflg", "ri
             if not os.path.exists(fname):
                 if d is None: d = fetch_monthly_data()
                 du = d[(d[gtype]==gkind) & (d.elv0<=th)]
+                print(len(du))
                 du.drop(du[du.ribiero_gflg==-1].index, inplace=True)
+                print(len(du))
                 du["binsrang"] = du.srange.apply(lambda x: 45*int(x/45))
                 du["binelv0"] = du.elv0.apply(lambda x: 0.5*int(x/0.5))
                 du = du.groupby( ["binsrang", "binelv0"] ).size().reset_index(name="Size")
@@ -385,7 +391,7 @@ def plot_2D_histogram():
     H.extend( dataset[y]["trad_gsflg0"]["H"][:-1] )
     H, Y = np.array(H), np.array(Y)
     fig0, axs0 = plt.figure(figsize=(5,4), dpi=300), []
-    labs = [("(a)", "Trad"), ("(b)", "Trad"), ("(c)", "New"), ("(d)", "Trad")]
+    labs = [("(a)", "Trad"), ("(b)", "Trad"), ("(c)", "ML"), ("(d)", "ML")]
     for ii, key in enumerate(keys):
         gkind = int(key[-1])
         ax0 = fig0.add_subplot(221+ii)
@@ -522,12 +528,12 @@ if __name__ == "__main__":
                                                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         for y in years:
             for m in months:
-                #process_monthly_ElRa_files(year=y, month=m, th=41)
+                process_monthly_ElRa_files(year=y, month=m, th=41)
                 #process_1D_histogram_dataset(year=y, month=m)
                 #process_2D_histogram_dataset(year=y, month=m)
                 pass
                 #break
             #break
         #plot_comp_plots(vh="comp", th=41)
-        #plot_2D_histogram()
-        plot_1D_velocity_histogram()
+        plot_2D_histogram()
+        #plot_1D_velocity_histogram()
